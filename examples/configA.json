@@ -1,0 +1,18 @@
+{
+  "build":{
+    "deps":[
+      "zmq",
+      "monique_worker_py"
+    ]
+  },
+  "deploy":{
+    "monique":{
+      "controller_host":"localhost",
+      "controller_port":4100,
+      "queue_host":"localhost",
+      "queue_port":4050,
+      "log_path":"/tmp/exampleA.log",
+      "log_level":20
+    }
+  }
+}
