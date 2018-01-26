@@ -16,6 +16,7 @@ class Worker:
         self.worker_config = read_config(args.config)
 
     def run(self):
+        """Runs application"""
         logging.basicConfig(level=self.worker_config.log_level,
                             format='%(asctime)s %(name)-12s %(levelname)-8s {}: %(message)s'.format(self.worker_name),
                             datefmt='%Y-%m-%d %H:%M',
@@ -34,14 +35,18 @@ class Worker:
         to_controller = context.socket(zmq.PUSH)
         to_controller.connect(self.worker_config.controller_push_address())
 
-        logging.info("connected to queue")
+        logging.info("connected to queue.")
 
+        # waiting for the message...
         while True:
             in_message = from_controller.recv()
-            logging.info('message received')
+            logging.info('message received.')
 
+            # parsing message to QMessage
             qmessage = qmessage_from_json(in_message)
             logging.debug('message tags: {}; message cnt: {}'.format(qmessage.tags, qmessage.cnt))
+
+            # get config from Task
             config = qmessage.get_config()
             logging.info('config parsed')
             logging.debug('config content: {}'.format(config))
@@ -49,13 +54,16 @@ class Worker:
             try:
                 logging.info('start working...')
 
+                # that is the MAIN PLACE. We run given algorithm with config received.
                 wr = self.algo(config)
 
                 logging.debug('worker result: {}, worker version: {}'.format(wr.result, wr.version))
                 logging.info('finished working!')
 
-                completed_message = qmessage.task_completed(wr)
+                # prepare result QMessage...
+                completed_message = qmessage.qmessage_completed(wr)
 
+                # and sending it back to the queue.
                 logging.info('sending message with completed task...')
                 logging.debug('message: {}'.format(completed_message.to_json()))
                 to_controller.send(completed_message.to_json())
@@ -65,17 +73,19 @@ class Worker:
             except Exception as e:
                 logging.error('failed with error: {}'.format(e))
 
-                failed_message = qmessage.task_failed(self.worker_name, e)
+                # if exception happened then format result QMessage with another method...
+                failed_message = qmessage.qmessage_failed(self.worker_name, e)
 
+                # and sending it back.
                 logging.info("sending message with failed task...")
                 logging.debug('message: {}'.format(failed_message.to_json()))
-
                 to_controller.send(failed_message.to_json())
 
                 logging.info("message sent :(")
 
 
 class WorkerResult:
+    """Class to format worker result."""
     def __init__(self, result, version):
         self.result = result
         self.version = version

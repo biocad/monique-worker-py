@@ -1,7 +1,7 @@
 {
   "build":{
     "deps":[
-      "zmq",
+      "pyzmq",
       "monique_worker_py"
     ]
   },

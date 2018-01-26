@@ -2,9 +2,9 @@
 Wrapper for Monique worker (Python)
 
 ## build
-Library `zmq` required. It can be installed with command
+Library `pyzmq` required. It can be installed with command
 ```bash
-pip3 install zmq
+pip3 install pyzmq
 ```
 Library with worker wrapper required. It can be installed from current directory with command
 ```bash

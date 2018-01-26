@@ -17,19 +17,24 @@ class WorkerConfig:
         self.log_level = log_level
 
     def controller_pull_address(self):
+        """Returns formatted PULL address to receive messages from controller."""
         return "tcp://{}:{}".format(self.controller_host, self.from_controller_port)
 
     def controller_push_address(self):
+        """Returns formatted PUSH address to send messages to controller."""
         return "tcp://{}:{}".format(self.controller_host, self.from_controller_port + 1)
 
     def queue_sub_address(self):
+        """Returns formatted SUB address to receive messages from queue."""
         return "tcp://{}:{}".format(self.queue_host, self.from_queue_port)
 
     def queue_push_address(self):
+        """Returns formatted PUSH address to send messages to queue."""
         return "tcp://{}:{}".format(self.queue_host, self.from_queue_port + 1)
 
 
 def read_config(path_to_config):
+    """Parses and returns configuration from чfile."""
     data = json.load(open(path_to_config))
     deploy = data['deploy']['monique']
     controller_host = deploy['controller_host']

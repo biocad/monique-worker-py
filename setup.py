@@ -8,4 +8,5 @@ setup(name='monique_worker_py',
       author_email='neterebskiy@biocad.ru',
       license='BSD3',
       packages=['monique_worker_py'],
-      zip_safe=False)
+      zip_safe=False,
+      install_requires=['pyzmq'])
