@@ -1,8 +1,8 @@
 import zmq
 import logging
 import argparse
-from monique_worker_py.config import read_config
-from monique_worker_py.qmessage import qmessage_from_json
+from monique_worker_py.config import read_worker_config
+from monique_worker_py.qmessage import qmessage_from_json, create_qmessage
 
 
 class Worker:
@@ -13,7 +13,7 @@ class Worker:
         parser = argparse.ArgumentParser()
         parser.add_argument('--config', required=True, help='Path to config file')
         args = parser.parse_args()
-        self.worker_config = read_config(args.config)
+        self.worker_config = read_worker_config(args.config)
 
     def run(self):
         """Runs application"""
@@ -47,7 +47,8 @@ class Worker:
             logging.debug('message tags: {}; message cnt: {}'.format(qmessage.tags, qmessage.cnt))
 
             # get config from Task
-            config = qmessage.get_config()
+            task = qmessage.cnt.contents
+            config = task.get_config()
             logging.info('config parsed')
             logging.debug('config content: {}'.format(config))
 
@@ -61,7 +62,10 @@ class Worker:
                 logging.info('finished working!')
 
                 # prepare result QMessage...
-                completed_message = qmessage.qmessage_completed(wr)
+                completed_task = task.task_completed(wr)
+
+                # prepare result QMessage...
+                completed_message = create_qmessage(completed_task)
 
                 # and sending it back to the queue.
                 logging.info('sending message with completed task...')

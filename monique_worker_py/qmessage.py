@@ -1,5 +1,6 @@
 import json
 from monique_worker_py.task import Task, create_task
+from monique_worker_py.userdata import Userdata
 
 
 class QMessage(object):
@@ -8,16 +9,24 @@ class QMessage(object):
     It will be refactored later.
     But now JSON structure is the following:
     {
-      "tags":[
-        {"getTag": String},    # fixed field, equal "task"
-        {"getTag": String},    # status field, equal to field "status" in Task
-        {"getTag": String}],   # spec field, equal to field "spec" in Task
+      "tags":
+        [
+        -- in Task case:
+        [
+          {"getTag": String},  # fixed field, equal "task"
+          {"getTag": String},  # status field, equal to field "status" in Task
+          {"getTag": String}   # spec field, equal to field "spec" in Task
+        ],
+        -- in Userdata case:
+        [
+          {"getTag": String}   # fixed field, equal "userdata"
+        ],
       "cnt":{
-        "tag": String,         # fixed field, equal "T"
-        "contents": JSON       # Task field, contains Task in JSON format
+        "tag": String,         # fixed field, equal "T" in Task case and "U" in Userdata case
+        "contents": JSON       # field that contains Task or Userdata in JSON format
       },
 
-    JSON example:
+    JSON Task example:
     {
       "tags":[
         {"getTag":"task"},
@@ -42,37 +51,50 @@ class QMessage(object):
         }
       }
     }
+
+    JSON Userdata example:
+    {
+      "tags":[
+        {"getTag":"userdata"}
+      ],
+      "cnt":{
+        "tag":"U",
+        "contents":{
+          "user":"00000000-0000-0000-0000-000000000000",
+          "property":"created",
+          "time":1520701240542,
+          "type":"biocad:production:strelna:line1:module1",
+          "data":1
+        }
+      }
+    }
     """
-    def __init__(self, j): # task <status task> <task name>
+    def __init__(self, j):
         self.__dict__ = j
         self.tags = j['tags']
-        self.cnt = Contents(j['cnt']['tag'], Task(j['cnt']['contents']))
+        self.cnt = Contents(j['cnt'])
 
-    def get_config(self):
-        """Return config from task."""
-        return self.cnt.contents.get_config()
+    def get_content(self):
+        """Returns field "contents" from QMessage"""
+        return self.cnt.contents
 
     def to_json(self):
         """Convert QMessage to JSON."""
         return json.dumps(self, allow_nan=False, default=lambda o: o.__dict__).encode("utf8")
 
-    def qmessage_completed(self, worker_result):
-        """Return QMessage with completed Task inside. We also should update status for the second Tag."""
-        self.cnt = Contents(self.cnt.tag, self.cnt.contents.task_completed(worker_result))
-        self.tags[1]['getTag'] = 'completed'
-        return self
-
-    def qmessage_failed(self, worker_name, error):
-        """Return QMessage with failed Task inside. We also should update status for the second Tag."""
-        self.cnt = Contents(self.cnt.tag, self.cnt.contents.task_failed(worker_name, error))
-        self.tags[1]['getTag'] = 'failed'
-        return self
-
 
 class Contents:
-    def __init__(self, tag, contents):
-        self.tag = tag
-        self.contents = contents
+    """
+        Contents describe "cnt" field in qmessage task
+    """
+    def __init__(self, json_dict):
+        self.tag = json_dict['tag']
+        if self.tag == 'T':
+            self.contents = Task(json_dict['contents'])
+        elif self.tag == 'U':
+            self.contents = Userdata(json_dict['contents'])
+        else:
+            raise Exception("Unknown tag")
 
 
 def qmessage_from_json(data):
@@ -81,8 +103,8 @@ def qmessage_from_json(data):
     return QMessage(in_json)
 
 
-def create_qmessage(task_id, task_user, task_spec, task_config, task_pid=None):
-    task = create_task(task_id, task_user, task_spec, task_config, task_pid)
-    tags = [{'getTag': 'task'}, {'getTag': 'new'}, {'getTag': task_spec}]
-    obj = {'tags': tags, 'cnt': {'tag': 'T', 'contents': task.__dict__}}
+def create_qmessage(some_data):
+    """Creates qmessage from some data. At current moment data can be Task or Userdata"""
+    tag, tags = some_data.create_tag_and_tags()
+    obj = {'tags': tags, 'cnt': {'tag': tag, 'contents': some_data.__dict__}}
     return QMessage(obj)

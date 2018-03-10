@@ -23,6 +23,11 @@ class Task(object):
     def __init__(self, j):
         self.__dict__ = j
 
+    def create_tag_and_tags(self):
+        tags = [{'getTag': 'task'}, {'getTag': self.status}, {'getTag': self.spec}]
+        tag = 'T'
+        return tag, tags
+
     def task_completed(self, worker_result):
         """Makes task completed. We should update time, status and result fields."""
         self.status = 'completed'
